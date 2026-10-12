@@ -86,6 +86,10 @@ button,input,select,textarea{font-family:var(--f);font-size:13px}
 
 .ph{position:relative;overflow:hidden;background:#f0efed;min-height:0;cursor:pointer}
 .ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.phz{position:relative;min-height:0;min-width:0;display:flex;align-items:center;justify-content:center;container-type:size}
+.phz>.ph{width:100%;height:100%}
+.phz>.ph.rat{width:min(100cqw,calc(100cqh * var(--r)));height:auto;aspect-ratio:var(--r)}
+.phz.below{flex:1;min-height:28mm;margin-top:2mm;align-items:flex-start}
 .ph .empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2mm;color:#8a8883;font-size:7.5pt;letter-spacing:.14em;text-transform:uppercase;text-align:center;padding:5mm}
 .ph .empty::before{content:"";width:9mm;height:9mm;border:.3mm solid #b5b3ae;border-radius:50%;background:linear-gradient(#b5b3ae,#b5b3ae) center/4mm .3mm no-repeat,linear-gradient(#b5b3ae,#b5b3ae) center/.3mm 4mm no-repeat}
 .ph .empty em{text-transform:none;letter-spacing:0;font-size:8.5pt;color:#6d6b67;max-width:110mm;line-height:1.4}
@@ -124,15 +128,18 @@ button,input,select,textarea{font-family:var(--f);font-size:13px}
 .landscape .t-text .body{columns:2;column-gap:10mm}
 .landscape .t-text .p-body{display:grid;grid-template-columns:85mm 1fr;grid-template-rows:auto 1fr;column-gap:12mm;align-content:start}
 .landscape .t-text .hd{grid-row:1/3}
+.landscape .t-text.hasb .p-body{grid-template-rows:auto 1fr;row-gap:7mm}
+.landscape .t-text.hasb .hd{grid-row:auto}
+.landscape .t-text .below{grid-column:1/3}
 
-.t-full .ph{flex:1}
+.t-full .phz{flex:1}
 
 /* photo + texte */
 .t-split .p-body{display:grid;grid-template-rows:1.1fr auto;gap:7mm}
 .t-split .tx{display:flex;flex-direction:column;gap:4mm;min-height:0}
 .landscape .t-split .p-body{grid-template-rows:none;grid-template-columns:1.2fr 1fr;gap:10mm}
 .landscape .t-split .tx{justify-content:flex-end;padding-bottom:2mm}
-.t-split.rev .ph{order:2}
+.t-split.rev .phz{order:2}
 .landscape .t-split.rev .p-body{grid-template-columns:1fr 1.2fr}
 
 /* grilles */
@@ -141,7 +148,7 @@ button,input,select,textarea{font-family:var(--f);font-size:13px}
 .landscape .t-g2 .grid{grid-template-rows:none;grid-template-columns:1fr 1fr}
 .t-g4 .grid{gap:4mm;grid-template-columns:1fr 1fr;grid-template-rows:1fr 1fr}
 .cell{display:flex;flex-direction:column;gap:2mm;min-height:0}
-.cell .ph{flex:1}
+.cell .phz{flex:1}
 
 /* chiffres */
 .t-fig .p-body{justify-content:center;gap:12mm}
@@ -235,6 +242,9 @@ button,input,select,textarea{font-family:var(--f);font-size:13px}
 #insp .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 #insp label{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--mute);flex:1 1 130px}
 #insp input[type=range]{flex:1;min-width:0;accent-color:var(--ink)}
+#insp select,#insp input[type=number]{padding:5px 6px;border:1px solid var(--line);border-radius:5px;background:var(--table);color:var(--ink);font-size:13px}
+#insp select{flex:1;min-width:0}
+#insp input[type=number]{width:64px}
 #insp .ttl{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-right:auto}
 
 /* départ */
@@ -355,6 +365,23 @@ button,input,select,textarea{font-family:var(--f);font-size:13px}
     <label>Vertical <input type="range" id="iY" min="0" max="100"></label>
     <label>Zoom <input type="range" id="iZ" min="100" max="250"></label>
   </div>
+  <div class="row" id="iRrow">
+    <label style="flex:2 1 220px">Cadre <select id="iR">
+      <option value="fill">Remplir l'espace</option>
+      <option value="photo">Proportions de la photo (sans recadrage)</option>
+      <option value="3:2">3:2 · photo classique</option>
+      <option value="4:3">4:3</option>
+      <option value="1:1">1:1 · carré</option>
+      <option value="4:5">4:5 · vertical</option>
+      <option value="2:3">2:3 · vertical</option>
+      <option value="16:9">16:9 · vidéo</option>
+      <option value="2:1">2:1 · large</option>
+      <option value="3:1">3:1 · panoramique</option>
+      <option value="17:2">17:2 · panoramique très large</option>
+      <option value="custom">Personnalisé…</option>
+    </select></label>
+    <label id="iCus" hidden>Largeur <input type="number" id="iRW" min="0.1" step="0.1"> × Hauteur <input type="number" id="iRH" min="0.1" step="0.1"></label>
+  </div>
 </div>
 
 <div id="settings" hidden>
@@ -449,25 +476,30 @@ const pref={get(k){try{const v=localStorage.getItem(k);if(v)return v}catch(e){}c
 
 /* ---------- rendu ---------- */
 function ed(pid,path,val,cls,ph,o={}){return `<div class="${cls||""}${o.ml?" ml":""}" contenteditable="true" spellcheck="true" data-p="${pid}" data-k="${path}"${o.rich?' data-rich="1"':''}${o.one?' data-one="1"':''} data-ph="${esc(ph||"")}">${o.rich?(val||""):esc(val)}</div>`}
-function phBox(pid,key,o,label){o=o||img();const z=(o.z||100)/100;
-  return `<div class="ph${selImg&&selImg.p===pid&&selImg.k===key?" sel":""}" data-p="${pid}" data-i="${key}">${o.src?`<img alt="" src="${o.src}" style="object-position:${o.x}% ${o.y}%;transform:scale(${z});transform-origin:${o.x}% ${o.y}%">`:`<div class="empty">${label||"Ajouter une photo"}${o.hint?`<em>${esc(o.hint)}</em>`:""}</div>`}</div>`}
+function ratioOf(o){if(!o||!o.ratio||o.ratio==="fill")return 0;if(o.ratio==="photo")return o.w&&o.h?o.w/o.h:0;
+  const m=String(o.ratio).match(/^\s*(\d+(?:[.,]\d+)?)\s*[:/x×]\s*(\d+(?:[.,]\d+)?)\s*$/);if(!m)return 0;const a=parseFloat(m[1].replace(",",".")),b=parseFloat(m[2].replace(",","."));return a>0&&b>0?a/b:0}
+function phBox(pid,key,o,label,zoneCls,noZone){o={...img(),...(o||{})};const z=(o.z||100)/100;const r=ratioOf(o);
+  const inner=`<div class="ph${r?" rat":""}${selImg&&selImg.p===pid&&selImg.k===key?" sel":""}" data-p="${pid}" data-i="${key}"${r?` style="--r:${r.toFixed(4)}"`:""}>${o.src?`<img alt="" src="${o.src}" style="object-position:${o.x}% ${o.y}%;transform:scale(${z});transform-origin:${o.x}% ${o.y}%">`:`<div class="empty">${label||"Ajouter une photo"}${o.hint?`<em>${esc(o.hint)}</em>`:""}</div>`}</div>`;
+  return noZone?inner:`<div class="phz${zoneCls?" "+zoneCls:""}">${inner}</div>`}
+const BELOW=["text","list","table"];
+function belowBox(id,d){return d.below?phBox(id,"below",d.below,"Photo sous le texte","below"):""}
 function foot(i,n){return `<footer class="p-foot"><img src="${LOGO}" alt=""><span>Cyril&nbsp;Chauvin&nbsp;Studio</span><span class="mid">${esc(S.title||"")}</span><span class="pn">${String(i+1).padStart(2,"0")} / ${String(n).padStart(2,"0")}</span></footer>`}
 const ONE={one:1};
 function pageHTML(p,i,n){const d=p.data,id=p.id;
   switch(p.type){
-  case"cover":return `<article class="page t-cover${d.img&&d.img.src?"":" noimg"}">${phBox(id,"img",d.img,"Photo de couverture")}
+  case"cover":return `<article class="page t-cover${d.img&&d.img.src?"":" noimg"}">${phBox(id,"img",d.img,"Photo de couverture","",1)}
     <div class="logo"><img src="${LOGO}" alt="">Cyril Chauvin Studio</div><div class="kind">${esc(KINDS[S.kind]?.name||"")}</div>
     <div class="ov">${ed(id,"eyebrow",d.eyebrow,"eyebrow","Client · Lieu",ONE)}${ed(id,"title",d.title,"h1","Titre")}${ed(id,"sub",d.sub,"sub","Sous-titre (facultatif)")}
     <div class="meta">${ed(id,"date",d.date,"","Date",ONE)}${ed(id,"right",d.right,"","Mention",ONE)}</div></div></article>`;
   case"section":return `<article class="page t-section"><div class="p-body">${ed(id,"n",d.n,"big","01",ONE)}<div class="rule"></div>${ed(id,"title",d.title,"h1","Titre de partie")}${ed(id,"sub",d.sub,"sub","Sous-titre (facultatif)")}</div>${foot(i,n)}</article>`;
-  case"text":return `<article class="page t-text"><div class="p-body"><div class="hd">${ed(id,"eyebrow",d.eyebrow,"eyebrow","Rubrique",ONE)}${ed(id,"title",d.title,"h1","Titre")}<div class="rule"></div></div>${ed(id,"body",d.body,"body","Texte…",{rich:1})}</div>${foot(i,n)}</article>`;
+  case"text":return `<article class="page t-text${d.below?" hasb":""}"><div class="p-body"><div class="hd">${ed(id,"eyebrow",d.eyebrow,"eyebrow","Rubrique",ONE)}${ed(id,"title",d.title,"h1","Titre")}<div class="rule"></div></div>${ed(id,"body",d.body,"body","Texte…",{rich:1})}${belowBox(id,d)}</div>${foot(i,n)}</article>`;
   case"full":return `<article class="page t-full"><div class="p-body">${phBox(id,"img",d.img)}${ed(id,"cap",d.cap,"cap","Légende")}</div>${foot(i,n)}</article>`;
   case"split":return `<article class="page t-split${d.rev?" rev":""}"><div class="p-body">${phBox(id,"img",d.img)}<div class="tx">${ed(id,"eyebrow",d.eyebrow,"eyebrow","Rubrique",ONE)}${ed(id,"title",d.title,"h2","Titre")}${ed(id,"body",d.body,"body","Texte…",{rich:1})}</div></div>${foot(i,n)}</article>`;
   case"g2":return `<article class="page t-g2"><div class="p-body"><div class="grid">${["a","b"].map(k=>`<div class="cell">${phBox(id,k,d[k])}${ed(id,"c"+k,d["c"+k],"cap","Légende (facultatif)")}</div>`).join("")}</div></div>${foot(i,n)}</article>`;
   case"g4":return `<article class="page t-g4"><div class="p-body"><div class="grid">${["a","b","c","d"].map(k=>`<div class="cell">${phBox(id,k,d[k])}${ed(id,"c"+k,d["c"+k],"cap","Légende (facultatif)")}</div>`).join("")}</div></div>${foot(i,n)}</article>`;
-  case"list":return `<article class="page t-list"><div class="p-body"><div class="hd">${ed(id,"eyebrow",d.eyebrow,"eyebrow","Rubrique",ONE)}${ed(id,"title",d.title,"h1","Titre")}</div><div class="items">${(d.items||[]).map((it,j)=>`<div class="it">${ed(id,`items.${j}.t`,it.t,"t","Point",ONE)}${ed(id,`items.${j}.d`,it.d,"d","Précision",{ml:1})}</div>`).join("")}</div></div>${foot(i,n)}</article>`;
+  case"list":return `<article class="page t-list"><div class="p-body"><div class="hd">${ed(id,"eyebrow",d.eyebrow,"eyebrow","Rubrique",ONE)}${ed(id,"title",d.title,"h1","Titre")}</div><div class="items">${(d.items||[]).map((it,j)=>`<div class="it">${ed(id,`items.${j}.t`,it.t,"t","Point",ONE)}${ed(id,`items.${j}.d`,it.d,"d","Précision",{ml:1})}</div>`).join("")}</div>${belowBox(id,d)}</div>${foot(i,n)}</article>`;
   case"table":{const cols=d.cols||[],rows=d.rows||[];const numCol=cols.map((_,j)=>rows.some(r=>isNum(r[j])));
-    return `<article class="page t-table"><div class="p-body"><div class="hd">${ed(id,"eyebrow",d.eyebrow,"eyebrow","Rubrique",ONE)}${ed(id,"title",d.title,"h1","Titre")}</div><div class="tbx"><table class="tb"><thead><tr>${cols.map((c,j)=>`<th class="${numCol[j]?"r":""}">${ed(id,"cols."+j,c,"","Colonne",ONE)}</th>`).join("")}</tr></thead><tbody>${rows.map((r,ri)=>`<tr class="${/^total/i.test(r[0]||"")?"tot":""}">${cols.map((_,j)=>`<td class="${numCol[j]?"r":""}">${ed(id,`rows.${ri}.${j}`,r[j]??"","ml","—")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>${ed(id,"note",d.note,"tnote","Note (facultatif)")}</div>${foot(i,n)}</article>`}
+    return `<article class="page t-table"><div class="p-body"><div class="hd">${ed(id,"eyebrow",d.eyebrow,"eyebrow","Rubrique",ONE)}${ed(id,"title",d.title,"h1","Titre")}</div><div class="tbx"><table class="tb"><thead><tr>${cols.map((c,j)=>`<th class="${numCol[j]?"r":""}">${ed(id,"cols."+j,c,"","Colonne",ONE)}</th>`).join("")}</tr></thead><tbody>${rows.map((r,ri)=>`<tr class="${/^total/i.test(r[0]||"")?"tot":""}">${cols.map((_,j)=>`<td class="${numCol[j]?"r":""}">${ed(id,`rows.${ri}.${j}`,r[j]??"","ml","—")}</td>`).join("")}</tr>`).join("")}</tbody></table></div>${ed(id,"note",d.note,"tnote","Note (facultatif)")}${belowBox(id,d)}</div>${foot(i,n)}</article>`}
   case"script":return `<article class="page t-script"><div class="p-body"><div class="hd">${ed(id,"eyebrow",d.eyebrow,"eyebrow","Séquence",ONE)}${ed(id,"title",d.title,"h2","Titre de séquence")}</div><div class="tbx"><table class="tb"><thead><tr><th>Durée</th><th>Image</th><th>Son · voix</th></tr></thead><tbody>${(d.rows||[]).map((r,ri)=>`<tr><td>${ed(id,`rows.${ri}.tc`,r.tc,"","0:00",ONE)}</td><td>${ed(id,`rows.${ri}.img`,r.img,"ml","Ce qu'on voit")}</td><td>${ed(id,`rows.${ri}.son`,r.son,"ml","Ce qu'on entend")}</td></tr>`).join("")}</tbody></table></div></div>${foot(i,n)}</article>`;
   case"fig":return `<article class="page t-fig"><div class="p-body"><div class="hd">${ed(id,"eyebrow",d.eyebrow,"eyebrow","Rubrique",ONE)}${ed(id,"title",d.title,"h1","Titre")}</div><div class="figs">${[1,2,3].map(k=>`<div class="fig">${ed(id,"n"+k,d["n"+k],"n","00",ONE)}${ed(id,"l"+k,d["l"+k],"l","Libellé")}</div>`).join("")}</div></div>${foot(i,n)}</article>`;
   case"quote":return `<article class="page t-quote"><div class="p-body"><div class="mark">“</div>${ed(id,"q",d.q,"q","Citation")}<div><div class="rule" style="margin-bottom:4mm"></div>${ed(id,"who",d.who,"who","Nom",ONE)}${ed(id,"role",d.role,"role","Fonction",ONE)}</div></div>${foot(i,n)}</article>`;
@@ -488,6 +520,7 @@ function render(flashIds){
   $("#desk").innerHTML=S.pages.map((p,i)=>`<section class="sheet-wrap${flashIds&&flashIds.has(p.id)?" flash":""}" data-id="${p.id}">
     <div class="sheet-tools"><span class="num">${String(i+1).padStart(2,"0")}</span><span>${TYPES[p.type]?.name||p.type}</span><span class="over" hidden>Le contenu déborde</span><span class="sp"></span>
       ${p.type==="split"?`<button class="chip" data-a="flip" type="button">Inverser</button>`:""}
+      ${BELOW.includes(p.type)?(p.data.below?`<button class="chip" data-a="belowDel" type="button">− Photo dessous</button>`:`<button class="chip" data-a="belowAdd" type="button">+ Photo sous le texte</button>`):""}
       ${["list","table","script"].includes(p.type)?`<button class="chip" data-a="rowAdd" type="button">+ Ligne</button><button class="chip" data-a="rowDel" type="button">− Ligne</button>`:""}
       <button class="chip" data-a="up" type="button" ${i===0?"disabled":""} aria-label="Monter">↑</button>
       <button class="chip" data-a="down" type="button" ${i===n-1?"disabled":""} aria-label="Descendre">↓</button>
@@ -532,15 +565,17 @@ $("#fileImg").addEventListener("change",async e=>{const fs=[...e.target.files];i
 /* ---------- glisser-déposer de photos ---------- */
 const SLOTS={cover:["img"],full:["img"],split:["img"],g2:["a","b"],g4:["a","b","c","d"]};
 const isImg=f=>f&&(/^image\//.test(f.type)||/\.(jpe?g|png|webp|heic|heif|gif|tiff?)$/i.test(f.name));
-async function loadImg(f){try{return await shrink(f,3000,.9)}catch(e){toast("Format non lu : "+f.name+" (exporte-la en JPEG)");return null}}
+async function loadImg(f){try{return await shrinkD(f,3000,.9)}catch(e){toast("Format non lu : "+f.name+" (exporte-la en JPEG)");return null}}
 /* pageId+key = case visée ; sinon on remplit les cases vides de la page ; le reste crée de nouvelles pages */
 async function placeFiles(files,pageId,key,afterId){
   files=files.filter(isImg);if(!files.length){toast("Glisse des photos (JPEG, PNG, WebP…)");return}
   toast(files.length>1?`Import de ${files.length} photos…`:"Import de la photo…");
   const srcs=(await Promise.all(files.map(loadImg))).filter(Boolean);if(!srcs.length)return;
   const touched=new Set();let last=afterId||null,lastFill=null;
-  const put=(p,k,src)=>{const o=p.data[k]||(p.data[k]=img());Object.assign(o,{src,x:50,y:50,z:100});touched.add(p.id);lastFill={p:p.id,k}};
-  if(pageId){const p=PG(pageId);const keys=SLOTS[p.type]||[];
+  const put=(p,k,im)=>{const o=p.data[k]||(p.data[k]=img());Object.assign(o,{src:im.src,w:im.w,h:im.h,x:50,y:50,z:100});touched.add(p.id);lastFill={p:p.id,k}};
+  if(pageId){const p=PG(pageId);
+    if(!key&&BELOW.includes(p.type)&&!p.data.below)p.data.below=img();
+    const keys=[...(SLOTS[p.type]||[]),...(p.data.below?["below"]:[])];
     if(key){put(p,key,srcs.shift())}
     for(const k of keys){if(!srcs.length)break;if(!p.data[k]||!p.data[k].src)put(p,k,srcs.shift())}
     last=pageId}
@@ -572,10 +607,25 @@ document.addEventListener("drop",async e=>{if(!hasFiles(e))return;e.preventDefau
 document.addEventListener("paste",async e=>{if(e.target.closest&&e.target.closest("[contenteditable],textarea,input"))return;
   const fs=[...(e.clipboardData?.files||[])].filter(isImg);if(!fs.length||!S)return;e.preventDefault();
   if(selImg)await placeFiles(fs,selImg.p,selImg.k);else await placeFiles(fs,null,null)});
+async function shrinkD(f,max,q){const src=await shrink(f,max,q);const d=await new Promise(r=>{const i=new Image();i.onload=()=>r({w:i.naturalWidth,h:i.naturalHeight});i.onerror=()=>r({w:0,h:0});i.src=src});return {src,...d}}
 function shrink(f,max,q){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>{let w=im.naturalWidth,h=im.naturalHeight;const k=Math.min(1,max/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);
   const c=document.createElement("canvas");c.width=w;c.height=h;c.getContext("2d").drawImage(im,0,0,w,h);res(c.toDataURL("image/jpeg",q))};im.onerror=rej;im.src=r.result};r.onerror=rej;r.readAsDataURL(f)})}
 function curImg(){return selImg&&PG(selImg.p)?PG(selImg.p).data[selImg.k]:null}
-function openInsp(){const o=curImg();if(!o)return;$("#iX").value=o.x;$("#iY").value=o.y;$("#iZ").value=o.z;$("#insp").hidden=false;markSel()}
+const PRESETS=["fill","photo","3:2","4:3","1:1","4:5","2:3","16:9","2:1","3:1","17:2"];
+function openInsp(){const o=curImg();if(!o)return;$("#iX").value=o.x??50;$("#iY").value=o.y??50;$("#iZ").value=o.z??100;
+  const isCover=PG(selImg.p).type==="cover";$("#iRrow").hidden=isCover;
+  const r=o.ratio||"fill";if(PRESETS.includes(r)){$("#iR").value=r;$("#iCus").hidden=true}
+  else{$("#iR").value="custom";$("#iCus").hidden=false;const m=String(r).split(/[:/x×]/);$("#iRW").value=m[0]||"";$("#iRH").value=m[1]||""}
+  $("#insp").hidden=false;markSel()}
+function setRatio(v){const o=curImg();if(!o)return;
+  if(v==="photo"&&!(o.w&&o.h)){const el=document.querySelector(`.ph[data-p="${selImg.p}"][data-i="${selImg.k}"] img`);if(el&&el.naturalWidth){o.w=el.naturalWidth;o.h=el.naturalHeight}}
+  if(v==="photo"&&!(o.w&&o.h)){toast("Place d'abord une photo dans ce cadre")}
+  o.ratio=v;render();save()}
+$("#iR").addEventListener("change",e=>{const v=e.target.value;
+  if(v==="custom"){$("#iCus").hidden=false;const o=curImg();const r=o&&o.w&&o.h?o.w/o.h:2;if(!$("#iRW").value){$("#iRW").value=r>=1?(Math.round(r*10)/10):1;$("#iRH").value=r>=1?1:(Math.round(10/r)/10)}applyCustom();return}
+  $("#iCus").hidden=true;setRatio(v)});
+function applyCustom(){const w=parseFloat($("#iRW").value),h=parseFloat($("#iRH").value);if(w>0&&h>0)setRatio(`${w}:${h}`)}
+["#iRW","#iRH"].forEach(x=>$(x).addEventListener("change",applyCustom));
 function closeInsp(){selImg=null;$("#insp").hidden=true;markSel()}
 function markSel(){document.querySelectorAll(".ph").forEach(b=>b.classList.toggle("sel",!!selImg&&b.dataset.p===selImg.p&&b.dataset.i===selImg.k))}
 function applyImg(){const o=curImg();if(!o)return;o.x=+$("#iX").value;o.y=+$("#iY").value;o.z=+$("#iZ").value;
@@ -592,6 +642,9 @@ function pageTool(b){const id=b.closest(".sheet-wrap").dataset.id;const i=S.page
   if(a==="dup"){const c=JSON.parse(JSON.stringify(p));c.id=uid();S.pages.splice(i+1,0,c)}
   if(a==="del"){if(b.dataset.armed){S.pages.splice(i,1);closeInsp()}else{b.dataset.armed=1;b.textContent="Confirmer ?";setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent="Supprimer"}},2500);return}}
   if(a==="flip")p.data.rev=!p.data.rev;
+  if(a==="belowAdd")p.data.below=img();
+  if(a==="belowDel"){if(p.data.below&&p.data.below.src&&!b.dataset.armed){b.dataset.armed=1;b.textContent="Retirer la photo ?";setTimeout(()=>{if(b.isConnected){delete b.dataset.armed;b.textContent="− Photo dessous"}},2500);return}
+    delete p.data.below;if(selImg&&selImg.p===id&&selImg.k==="below")closeInsp()}
   if(a==="rowAdd"){if(p.type==="list")(p.data.items=p.data.items||[]).push({t:"",d:""});if(p.type==="table")(p.data.rows=p.data.rows||[]).push((p.data.cols||[]).map(()=>""));if(p.type==="script")(p.data.rows=p.data.rows||[]).push({tc:"",img:"",son:""})}
   if(a==="rowDel"){const arr=p.type==="list"?p.data.items:p.data.rows;if(arr&&arr.length)arr.pop()}
   render();save()}
@@ -682,7 +735,7 @@ const CAP=()=>{const L=S.orient==="landscape";return L
 function systemPrompt(overflow){
   const k=KINDS[S.kind];
   const state=S.pages.map((p,i)=>{const d=JSON.parse(JSON.stringify(p.data));
-    for(const key in d){if(d[key]&&typeof d[key]==="object"&&"src" in d[key]){d[key]={photo:d[key].src?"photo placée par Cyril":"case vide",hint:d[key].hint||""}}}
+    for(const key in d){if(d[key]&&typeof d[key]==="object"&&"src" in d[key]){d[key]={photo:d[key].src?"photo placée par Cyril":"case vide",hint:d[key].hint||"",ratio:d[key].ratio||"fill"}}}
     if(d.body)d.body=plain(d.body);
     return {page:i+1,id:p.id,type:p.type,...(overflow.includes(p.id)?{DEBORDE:true}:{}),data:d}});
   return `Tu es le co-rédacteur de Cyril Chauvin dans son application de mise en page de dossiers.
@@ -712,6 +765,8 @@ TYPES DE PAGES ET CHAMPS (data)
 - split : eyebrow, title, body, img {hint}, rev (true = photo à droite)
 - full : img {hint}, cap (légende)
 - g2 : a {hint}, b {hint}, ca, cb (légendes) — g4 : a,b,c,d {hint}, ca,cb,cc,cd
+- CASES PHOTO (img, a, b, c, d, below) : {hint, ratio}. ratio = "fill" (remplit l'espace, défaut), "photo" (proportions réelles de la photo, sans recadrage) ou "L:H" (ex. "17:2" panoramique très large, "3:1", "3:2", "16:9", "4:5"). Choisis le ratio quand le texte parle d'un format précis.
+- PHOTO SOUS LE TEXTE : les pages text, list et table acceptent un champ below = case photo {hint, ratio} placée sous le contenu, qui occupe l'espace libre. below: null la retire (refusé si Cyril y a mis une photo).
 - list : eyebrow, title, items [{t: point, d: précision}]
 - table : eyebrow, title, cols [noms de colonnes], rows [[cellules]] (une ligne commençant par "Total" est mise en gras), note
 - script : eyebrow (ex. "Séquence 2"), title, rows [{tc: durée ou timecode, img: ce qu'on voit, son: ce qu'on entend}]
@@ -743,7 +798,10 @@ function applyActions(actions){const log=[],touched=new Set();
       deepMerge(pg.data,d);S.pages.splice(insertIndex(a.after,a.type),0,pg);touched.add(pg.id);log.push(`page ${pg.id} (${a.type}) ajoutée`)}
     else if(a.op==="update_page"){const p=PG(a.id);if(!p){log.push(`update_page : id ${a.id} introuvable`);continue}
       const d={...(a.data||{})};if(d.body!==undefined)d.body=toRich(d.body);
-      for(const key in d){const cur=p.data[key];if(cur&&typeof cur==="object"&&"src" in cur&&d[key]&&typeof d[key]==="object"){d[key]={hint:d[key].hint??cur.hint}}}
+      for(const key in d){const cur=p.data[key];if(cur&&typeof cur==="object"&&"src" in cur&&d[key]&&typeof d[key]==="object"){d[key]={hint:d[key].hint??cur.hint,ratio:d[key].ratio??cur.ratio}}}
+      if(d.below===null&&p.data.below&&p.data.below.src){delete d.below;log.push(`below de ${p.id} conservé : il contient une photo de Cyril`)}
+      if(d.below===null){delete d.below;delete p.data.below}
+      if(d.below&&typeof d.below==="object"&&!p.data.below)p.data.below=img();
       deepMerge(p.data,d);touched.add(p.id);log.push(`page ${p.id} mise à jour`)}
     else if(a.op==="delete_page"){const i=S.pages.findIndex(p=>p.id===a.id);if(i<0){log.push(`delete_page : id ${a.id} introuvable`);continue}
       if(Object.values(S.pages[i].data).some(v=>v&&v.src)){log.push(`page ${a.id} non supprimée : elle contient des photos de Cyril`);continue}
